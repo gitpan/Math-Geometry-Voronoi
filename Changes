@@ -1,5 +1,14 @@
 Revision history for Perl extension Math::Geometry::Voronoi.
 
+1.1
+
+     - [Enhancement] changed underlying C code to use doubles instead
+       of floats, extending range and reducing errors
+
+     - [Bug Fix] Stop skipping the last point.
+
+     - [Bug Fix] changed filenames to work on case-insensitive systems
+
 1.0  Tue Jun 10 09:44:46 2008
 
      - first version released

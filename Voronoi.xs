@@ -11,10 +11,10 @@ MODULE = Math::Geometry::Voronoi PACKAGE = Math::Geometry::Voronoi
 SV *
 compute_voronoi_xs(points_ref, xmin, xmax, ymin, ymax)
   SV *points_ref
-  float xmin
-  float xmax
-  float ymin
-  float ymax
+  double xmin
+  double xmax
+  double ymin
+  double ymax
 PREINIT:
   Site *sites;
   SV *ref, *sv, *sv_x, *sv_y;
@@ -34,7 +34,7 @@ CODE:
   // translate points AV into Sites array for use by voronoi C code
   sites = (Site *) myalloc(num_points * sizeof(Site));
 
-  for (i = 0; i < (num_points - 1); i++) {
+  for (i = 0; i < num_points; i++) {
     svp = av_fetch(points, i, 0);
     if (!svp)
       croak("Failed to fetch points[%d]!", i);
@@ -60,7 +60,7 @@ CODE:
     if (!svp)
       croak("Failed to fetch points[%d][1]!", i);
     sv_y = *svp;
-    
+
     sites[i].coord.x = SvNV(sv_x);
     sites[i].coord.y = SvNV(sv_y);
     sites[i].sitenbr = i;
@@ -72,7 +72,7 @@ CODE:
   edges    = newAV();
   vertices = newAV();
 
-  compute_voronoi(sites, num_points - 1, xmin, xmax, ymin, ymax, debug, lines, edges, vertices);
+  compute_voronoi(sites, num_points, xmin, xmax, ymin, ymax, debug, lines, edges, vertices);
 
   result = newHV();
   hv_store(result, "lines",    strlen("lines"),    newRV_noinc((SV*) lines), 0);

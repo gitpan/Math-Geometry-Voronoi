@@ -84,6 +84,7 @@ foreach my $vertex (@{$geo->vertices}) {
 # try computing some polygons
 my @polygons = $geo->polygons;
 ok(@polygons);
+
 foreach my $poly (@polygons) {
     my ($p, @verts) = @$poly;
 

@@ -16,4 +16,4 @@ WriteMakefile(NAME          => 'Math::Geometry::Voronoi',
               INC           => '-I.',
               OBJECT =>
                 'voronoi_main.o edgelist.o heap.o geometry.o memory.o '
-                . 'output.o voronoi.o Voronoi.o');
+                . 'output.o voronoi_core.o Voronoi.o');

@@ -4,7 +4,7 @@
 #include <math.h>
 #include "vdefs.h"
 
-float deltax, deltay ;
+double deltax, deltay ;
 int nedges, sqrt_nsites, nvertices ;
 Freelist efl ;
 
@@ -21,7 +21,7 @@ geominit(void)
 Edge *
 bisect(Site * s1, Site * s2)
     {
-    float dx, dy, adx, ady ;
+    double dx, dy, adx, ady ;
     Edge * newedge ;
 
     newedge = (Edge *)getfree(&efl) ;
@@ -59,7 +59,7 @@ intersect(Halfedge * el1, Halfedge * el2)
     {
     Edge * e1, * e2, * e ;
     Halfedge * el ;
-    float d, xint, yint ;
+    double d, xint, yint ;
     int right_of_site ;
     Site * v ;
 
@@ -113,7 +113,7 @@ right_of(Halfedge * el, Point * p)
     Edge * e ;
     Site * topsite ;
     int right_of_site, above, fast ;
-    float dxp, dyp, dxs, t1, t2, t3, yl ;
+    double dxp, dyp, dxs, t1, t2, t3, yl ;
 
     e = el->ELedge ;
     topsite = e->reg[1] ;
@@ -187,10 +187,10 @@ endpoint(Edge * e, int lr, Site * s)
     makefree((Freenode *)e, (Freelist *) &efl) ;
     }
 
-float
+double
 dist(Site * s, Site * t)
     {
-    float dx,dy ;
+    double dx,dy ;
 
     dx = s->coord.x - t->coord.x ;
     dy = s->coord.y - t->coord.y ;

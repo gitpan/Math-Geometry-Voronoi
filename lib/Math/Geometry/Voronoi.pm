@@ -4,13 +4,13 @@ use 5.008;
 use strict;
 use warnings;
 
-our $VERSION = '1.0';
+our $VERSION = '1.1';
 
 require XSLoader;
 XSLoader::load('Math::Geometry::Voronoi', $VERSION);
 
 use Params::Validate qw(validate ARRAYREF CODEREF);
-use List::Util qw(min max);
+use List::Util qw(min max sum);
 
 use base 'Class::Accessor::Fast';
 __PACKAGE__->mk_accessors(
@@ -66,16 +66,15 @@ sub polygons {
     my %args = validate(@_,
                         {normalize_vertices => {type     => CODEREF,
                                                 optional => 1
-                                               }
+                                               },
                         });
-    my @polygons;
     my $points   = $self->points;
     my $lines    = $self->lines;
     my $edges    = $self->edges;
     my $vertices = $self->vertices;
 
     if (my $norm = $args{normalize_vertices}) {
-        $vertices = [ map { [$norm->($_->[0]), $norm->($_->[1])] } @$vertices ];
+        $vertices = [map { [$norm->($_->[0]), $norm->($_->[1])] } @$vertices];
     }
 
     my @edges_by_point;
@@ -84,20 +83,20 @@ sub polygons {
         if ($v1 != -1 and $v2 != -1) {
             my ($lat1, $lon1, $lat2, $lon2) =
               (@{$vertices->[$v1]}, @{$vertices->[$v2]});
-            my ($p1, $p2) =($lines->[$l][3], $lines->[$l][4]);
-            foreach my $p ($p1, $p2) {
-                push @{$edges_by_point[$p]}, [$lat1, $lon1, $lat2, $lon2];
+            my ($p1, $p2) = ($lines->[$l][3], $lines->[$l][4]);
+
+            if ($p1 != -1 and $p2 != -1) {
+                foreach my $p ($p1, $p2) {
+                    push @{$edges_by_point[$p]}, [$lat1, $lon1, $lat2, $lon2];
+                }
             }
         }
     }
 
-  POINT:
-    foreach my $p (0 .. $#$points) {
+    my @polygons;
+  POINT: foreach my $p (0 .. $#$points) {
         my $stack = $edges_by_point[$p];
-        
-        # remove dups
-        my %seen;
-        @$stack = grep { !$seen{join(',', sort @$_)}++ } @$stack;
+        next unless $stack;
 
         # can't make a polygon with less than 3 edges
         next unless @$stack >= 3;
@@ -124,6 +123,7 @@ sub polygons {
                     @$next = ($next->[2], $next->[3], $next->[0], $next->[1]);
                     push @poly, $next;
                 } else {
+
                     # no matching edge, fail
                     next POINT;
                 }
@@ -131,10 +131,16 @@ sub polygons {
         }
 
         # make a list of the first points
-        push @polygons, [ $p, map { [ $_->[0], $_->[1] ] } @poly ];
+        push @polygons, [$p, map { [$_->[0], $_->[1]] } @poly];
     }
 
     return @polygons;
+}
+
+sub _dump_poly {
+    my $poly = shift;
+    return
+      "[ \n\t" . join(", \n\t", map { "[$_->[0],$_->[1]]" } @$poly) . " ]\n";
 }
 
 1;
@@ -165,6 +171,9 @@ Math::Geometry::Voronoi - compute Voronoi diagrams from sets of points
     my $edges    = $geo->edges;
     my $vertices = $geo->vertices;
 
+    # build polygons
+    my @polygons = $geo->polygons;
+
 =head1 DESCRIPTION
 
 This module computes Voronoi diagrams from a set of input points.
@@ -183,7 +192,8 @@ of the algorithm used (Fortune's algorithm):
 
 I made changes to the C code to allow reading input and writing output
 to/from Perl data-structures.  I also modified the memory allocation
-code to use Perl's memory allocator.
+code to use Perl's memory allocator.  Finally, I changed all floats to
+doubles to provide better precision and to match Perl's NVs.
 
 =head1 INTERFACE
 
@@ -260,7 +270,9 @@ Feedback welcome.
 This method returns a reference to an array containing first a point
 index and then a list of vertex coordinates.  The point is the point
 inside the polygon and the vertices are in drawing order for the
-closed polygon surrounding the point.
+closed polygon surrounding the point.  For example:
+
+  @polys = ( $point_index, [$lat1, $lon1], [$lat2, $lon2], ... );
 
 One optional parameter is available - normalize_vertices.  This option
 is necessary because the algorithm used needs to match up points from
@@ -286,8 +298,10 @@ Possible projects, if you're in the mood to help out:
   - Add the ability to combine polygons based on a mapping of
     same-type points.  Map overlays get cluttered by internal lines
     with you're coloring multiple polygons the same.  All edges
-    connect exactly two polygons, so this should be relatively easy
-    (?).
+    connect exactly two polygons, so this should be relatively easy.
+    Sadly, my limited math skills have thwarted me on this one - I
+    spent several days but ultimately couldn't get it working reliably
+    on all possible shapes.
 
   - Remove the need for the normalize_vertices option to polygons(),
     somehow (fuzzy matching?).
@@ -296,7 +310,7 @@ Possible projects, if you're in the mood to help out:
     see purty colors.  Could be an excuse to play with the new canvas
     stuff in modern browsers.
 
-  - Add tests that actually examine the output for sanity.  So far the
+  - Add tests that actually examine the output for sanity. So far the
     tests just look at the format and range of the output data - to
     see if it's actually doing a decent diagram I look at graphical
     output.

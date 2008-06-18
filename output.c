@@ -7,10 +7,10 @@
 #include "vdefs.h"
 
 extern int triangulate, plot, debug ;
-extern float ymax, ymin, xmax, xmin ;
+extern double ymax, ymin, xmax, xmin ;
 extern AV *lines_out, *edges_out, *vertices_out;
 
-float pxmin, pxmax, pymin, pymax, cradius;
+double pxmin, pxmax, pymin, pymax, cradius;
 
 void
 openpl(void)
@@ -19,19 +19,19 @@ openpl(void)
 
 #pragma argsused
 void
-line(float ax, float ay, float bx, float by)
+line(double ax, double ay, double bx, double by)
     {
     }
 
 #pragma argsused
 void
-circle(float ax, float ay, float radius)
+circle(double ax, double ay, double radius)
     {
     }
 
 #pragma argsused
 void
-range(float pxmin, float pxmax, float pymin, float pymax)
+range(double pxmin, double pxmax, double pymin, double pymax)
     {
     }
 
@@ -146,7 +146,7 @@ out_triple(Site * s1, Site * s2, Site * s3)
 void
 plotinit(void)
     {
-    float dx, dy, d ;
+    double dx, dy, d ;
 
     dy = ymax - ymin ;
     dx = xmax - xmin ;
@@ -164,7 +164,7 @@ void
 clip_line(Edge * e)
     {
     Site * s1, * s2 ;
-    float x1, x2, y1, y2 ;
+    double x1, x2, y1, y2 ;
 
     if (e->a == 1.0 && e->b >= 0.0)
         {

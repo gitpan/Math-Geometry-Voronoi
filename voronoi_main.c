@@ -10,15 +10,15 @@ Site * readone(void), * nextone(void) ;
 void readsites(void) ;
 
 int sorted, triangulate, plot, debug, nsites, siteidx ;
-float xmin, xmax, ymin, ymax ;
+double xmin, xmax, ymin, ymax ;
 Site * sites ;
 Freelist sfl ;
 AV *lines_out, *edges_out, *vertices_out;
 
 int
 compute_voronoi(Site *sites_in, int nsites_in, 
-                float xmin_in, float xmax_in, 
-                float ymin_in, float ymax_in, 
+                double xmin_in, double xmax_in, 
+                double ymin_in, double ymax_in, 
                 int debug_in,
                 AV *lines_out_in, 
                 AV *edges_out_in, 
