@@ -59,10 +59,10 @@ myalloc(unsigned n)
     if (nallocs % 1000 == 0)
 	{
           if (nallocs == 0) {
-            Newz(0, memory_map, (nallocs+1000), void*);
+            Newz(0, memory_map, (nallocs+1000), char*);
           } else {
-            Renew((void *)memory_map, (nallocs+1000), void *);
-            Zero((void *) memory_map+nallocs, 1000, void *);
+            Renew(memory_map, (nallocs+1000), char*);
+            Zero( memory_map+nallocs, 1000, char*);
           }
           total_alloc += (1000 * sizeof(void *));
 	}

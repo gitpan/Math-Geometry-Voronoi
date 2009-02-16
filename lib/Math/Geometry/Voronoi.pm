@@ -4,7 +4,7 @@ use 5.008;
 use strict;
 use warnings;
 
-our $VERSION = '1.1';
+our $VERSION = '1.2';
 
 require XSLoader;
 XSLoader::load('Math::Geometry::Voronoi', $VERSION);
