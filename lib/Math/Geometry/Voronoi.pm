@@ -4,7 +4,7 @@ use 5.008;
 use strict;
 use warnings;
 
-our $VERSION = '1.2';
+our $VERSION = '1.3';
 
 require XSLoader;
 XSLoader::load('Math::Geometry::Voronoi', $VERSION);
@@ -61,6 +61,46 @@ sub compute {
     return;
 }
 
+sub cmp_verts_ab { return cmp_verts($a,$b); }
+
+# a low x value is placed before a high x value. if both x values 
+# are the same, a high y value is placed before a low y value. 
+sub cmp_verts {
+    return ($_[0]->[0] <=> $_[1]->[0] || $_[1]->[1] <=> $_[0]->[1] );
+}
+
+
+sub vert_inside_bounds {
+    my ($self, $x,$y) = @_;
+    return (
+        $x >= $self->xmin and $x <= $self->xmax and
+        $y >= $self->ymin and $y <= $self->ymax
+    );
+}
+
+
+sub boundry_interesection_verts {
+    my($self, $a,$b,$c) = @_;
+    my $verts = [];
+
+    if($b){
+        my $v1 = [$self->xmin,($c-$a*$self->xmin)/$b];
+        my $v2 = [$self->xmax,($c-$a*$self->xmax)/$b];
+        push ( @$verts, $v1 ) if ( $self->vert_inside_bounds( @$v1 ) );
+        push ( @$verts, $v2 ) if ( $self->vert_inside_bounds( @$v2 ) );
+    }
+
+    if($a){
+        my $v1 = [($c-$b*$self->ymax)/$a,$self->ymax];
+        my $v2 = [($c-$b*$self->ymin)/$a,$self->ymin];
+        push ( @$verts, $v1 ) if ( $self->vert_inside_bounds( @$v1 ) );
+        push ( @$verts, $v2 ) if ( $self->vert_inside_bounds( @$v2 ) );
+    }
+
+    $verts;
+}
+
+
 sub polygons {
     my $self = shift;
     my %args = validate(@_,
@@ -78,57 +118,95 @@ sub polygons {
     }
 
     my @edges_by_point;
-    foreach my $edge (@$edges) {
+    EDGE: foreach my $edge (@$edges) {
         my ($l, $v1, $v2) = @$edge;
-        if ($v1 != -1 and $v2 != -1) {
-            my ($lat1, $lon1, $lat2, $lon2) =
-              (@{$vertices->[$v1]}, @{$vertices->[$v2]});
-            my ($p1, $p2) = ($lines->[$l][3], $lines->[$l][4]);
+        next EDGE if( $v1 == -1 and $v2 == -1 );
+        my ($lon1, $lat1, $lon2, $lat2);
+        
+        my $ivs = $self->boundry_interesection_verts(@{$lines->[$l]});
+        $ivs = [sort cmp_verts_ab @$ivs];
+        
+        if( my $norm = $args{normalize_vertices}) {
+            $ivs = [map { [$norm->($_->[0]), $norm->($_->[1])] } @$ivs];
+        }
+        
+        ($lat1,$lon1) = @{$vertices->[$v1]} if( $v1 != -1 );
+        ($lat2,$lon2) = @{$vertices->[$v2]} if( $v2 != -1 );
 
-            if ($p1 != -1 and $p2 != -1) {
-                foreach my $p ($p1, $p2) {
-                    push @{$edges_by_point[$p]}, [$lat1, $lon1, $lat2, $lon2];
-                }
+        if( $v1 == -1 ) {
+            next EDGE unless( @$ivs and $lat2 +0 == $lat2 and $lon2 +0 == $lon2 );
+            if( cmp_verts( [$lat2,$lon2], $ivs->[0] ) > 0 ) {
+                ($lat1,$lon1) = @{$ivs->[0]};
+            } elsif( cmp_verts( [$lat2,$lon2], $ivs->[1] ) > 0 ) {
+                ($lat1,$lon1) = @{$ivs->[1]};
+            } else {
+                next EDGE;
+            }
+        }
+        if( $v2 == -1 ) {
+            next EDGE unless( @$ivs and $lat1 +0 == $lat1 and $lon1 +0 == $lon1 );
+            if( cmp_verts( [$lat1,$lon1], $ivs->[1] ) < 0 ) {
+                ($lat2,$lon2) = @{$ivs->[1]};
+            } elsif( cmp_verts( [$lat1,$lon1], $ivs->[0] ) < 0 ) {
+                ($lat2,$lon2) = @{$ivs->[0]};
+            } else {
+                next EDGE;
+            }
+        }
+        
+        # if any of the coords are NaN things break. 
+        next EDGE if( grep {$_ +0 != $_ } ($lat1,$lon1,$lat2,$lon2));
+        
+        my ($p1, $p2) = ($lines->[$l][3], $lines->[$l][4]);
+
+        if ($p1 != -1 and $p2 != -1) {
+            foreach my $p ($p1, $p2) {
+                push @{$edges_by_point[$p]}, [$lat1, $lon1, $lat2, $lon2];
             }
         }
     }
 
     my @polygons;
-  POINT: foreach my $p (0 .. $#$points) {
+    foreach my $p (0 .. $#$points) {
         my $stack = $edges_by_point[$p];
         next unless $stack;
+        # can't make a polygon with less than 2 edges
+        next unless @$stack >= 2;
 
-        # can't make a polygon with less than 3 edges
-        next unless @$stack >= 3;
-
-        # start at the first point and work through finding matches,
-        # flipping the edges around as needed
-        my @poly = pop @$stack;
-        while (@$stack) {
-            my $this = $poly[-1];
-            my ($n) = grep {
-                     $stack->[$_][0] eq $this->[2]
-                  && $stack->[$_][1] eq $this->[3]
-            } (0 .. $#$stack);
-            if (defined $n) {
-                my $next = splice(@$stack, $n, 1);
-                push @poly, $next;
-            } else {
-                my ($n) = grep {
-                         $stack->[$_][2] eq $this->[2]
-                      && $stack->[$_][3] eq $this->[3]
-                } (0 .. $#$stack);
-                if (defined $n) {
-                    my $next = splice(@$stack, $n, 1);
-                    @$next = ($next->[2], $next->[3], $next->[0], $next->[1]);
-                    push @poly, $next;
-                } else {
-
-                    # no matching edge, fail
-                    next POINT;
-                }
+        my @poly = ();
+        foreach my $this ( @$stack ) {
+            if( 
+                !grep { $_->[0] == $this->[0] && $_->[1] == $this->[1] } @poly
+                and $this->[0] +0 == $this->[0] 
+                and $this->[1] +0 == $this->[1]
+            ) {
+                push @poly, [$this->[0],$this->[1]];
+            }
+            if( 
+                !grep { $_->[0] == $this->[2] && $_->[1] == $this->[3] } @poly
+                and $this->[2] +0 == $this->[2] 
+                and $this->[3] +0 == $this->[3]
+            ) {
+                push @poly, [$this->[2],$this->[3]];
             }
         }
+
+        #TODO: if this point is the closest point to a corner... 
+        # add that corner as a vert on this poly
+
+        # sort poly's verts (anti?) clockwise around the point $points->[$p];
+        @poly = sort {
+            my($lat1,$lon1) = (
+                $a->[0] - $points->[$p]->[0], 
+                $a->[1] - $points->[$p]->[1]
+            );
+
+            my($lat2,$lon2) = (
+                $b->[0] - $points->[$p]->[0], 
+                $b->[1] - $points->[$p]->[1]
+            );
+            return atan2($lon1,$lat1) <=> atan2($lon2,$lat2);
+        } @poly;
 
         # make a list of the first points
         push @polygons, [$p, map { [$_->[0], $_->[1]] } @poly];

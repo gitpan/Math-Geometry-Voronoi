@@ -15,6 +15,7 @@ vdefs.h
 voronoi_core.c
 Voronoi.xs
 voronoi_main.c
-META.yml                                 Module meta-data (added by MakeMaker)
 t/02real.t
 t/real_data.txt
+examples/voronoi.cgi
+META.yml                                 Module meta-data (added by MakeMaker)
